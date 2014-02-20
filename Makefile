@@ -6,7 +6,7 @@
 #
 
 pfind: pfind.c
-	c99 pfind.c -o pfind -Wall
+	gcc pfind.c -o pfind -Wall -std=gnu99
 
 clean:
 	rm -f *.o core pfind

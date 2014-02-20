@@ -1,4 +1,5 @@
 pfind
+test_results/*
 
 # Object files
 *.o

@@ -14,14 +14,18 @@
 #include  <stdlib.h>
 #include  <stdio.h>
 #include  <string.h>
+#include  <sys/types.h>
 #include  <dirent.h>
 #include  <stdbool.h>
+#include  <limits.h>
 
 /* prototypes */
 void print_usage(char *program);
 void searchdir(char *dirname, char *findme, char type);
-void get_file_stat(char *filename);
 bool compare_type(unsigned char d_type, char type);
+void error_prefix();
+void missing_argument(char *argument);
+void invalid_predicate(char *predicate);
 
 
 int main(int argc, char* argv[]) {
@@ -35,13 +39,13 @@ int main(int argc, char* argv[]) {
         if (i + 1 <= argc - 1) {
           i++;
           findme = argv[i];
-        } else print_usage(argv[0]);
+        } else missing_argument(argv[i]);
       } else if (strcmp(argv[i], "-type") == 0) {
         if (i + 1 <= argc - 1) {
           i++;
           type = argv[i][0];  //TODO validation
-        } else print_usage(argv[0]);
-      } else print_usage(argv[0]);
+        } else missing_argument(argv[i]);
+      } else invalid_predicate(argv[i]);
     } else {
       if (dirname)
         print_usage(argv[0]);
@@ -50,7 +54,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  if (!dirname) dirname = ".";  // search current directory if none provided
+  if (!dirname) print_usage(argv[0]);
 
   searchdir(dirname, findme, type);
 }
@@ -66,18 +70,38 @@ void print_usage(char *program) {
   exit(1);
 }
 
+void error_prefix() {
+  fputs("pfind: ", stderr);
+}
+
+void missing_argument(char *argument) {
+  error_prefix();
+  fprintf(stderr, "missing argument to `%s'\n", argument);
+  exit(1);
+}
+
+void invalid_predicate(char *predicate) {
+  error_prefix();
+  fprintf(stderr, "invalid predicate `%s'\n", predicate);
+  exit(1);
+}
+
 void searchdir(char *dirname, char *findme, char type) {
   DIR *dir;  /* current working directory */
   struct dirent *direntp;  /* current working dir entry */
 
-  if ((dir = opendir(dirname)) == NULL)
-    perror("Cannot open directory");
+  if ((dir = opendir(dirname)) == NULL) {
+    error_prefix();
+    perror(dirname);
+    return;
+  }
 
+  char current_path[PATH_MAX];
   while ((direntp = readdir(dir)) != NULL) {
     /*puts(direntp->d_type);*/
-    if (strcmp(direntp->d_name, findme) == 0 && compare_type(direntp->d_type, type)) {
-      char *path = strcat(strcat(dirname, "/"), direntp->d_name);
-      puts(path); // TODO: realpath
+    if ((!findme || strcmp(direntp->d_name, findme) == 0) && compare_type(direntp->d_type, type)) {
+      sprintf(current_path, "%s/%s", dirname, direntp->d_name);
+      puts(current_path); // TODO: realpath
     }
   }
 
@@ -85,9 +109,25 @@ void searchdir(char *dirname, char *findme, char type) {
 }
 
 bool compare_type(unsigned char d_type, char type) {
-  return true;
+  switch (type) {
+    case '\0':
+      return true;
+    case 'f':
+      return d_type == DT_REG;
+    case 'd':
+      return d_type == DT_DIR;
+    case 'b':
+      return d_type == DT_BLK;
+    case 'c':
+      return d_type == DT_CHR;
+    case 'p':
+      return d_type == DT_FIFO;
+    case 'l':
+      return d_type == DT_LNK;
+    case 's':
+      return d_type == DT_SOCK;
+    default:
+      return false; // we should never get here
+  }
 }
 
-
-void get_file_stat(char *filename) {
-}
