@@ -14,16 +14,20 @@
 #include  <stdlib.h>
 #include  <stdio.h>
 #include  <string.h>
-#include  <sys/types.h>
 #include  <dirent.h>
+#include  <sys/types.h>
+#include  <sys/stat.h>
+#include  <unistd.h>
 #include  <stdbool.h>
 #include  <limits.h>
 #include  <fnmatch.h>
+#include  <libgen.h>
+#include  <errno.h>
 
 /* prototypes */
 void print_usage(char *program);
 void searchdir(char *dirname, char *findme, char type);
-bool compare_type(unsigned char d_type, char type);
+bool compare_type(mode_t mode, char type);
 void error_prefix();
 void missing_argument(char *argument);
 void invalid_predicate(char *predicate);
@@ -31,7 +35,7 @@ void invalid_predicate(char *predicate);
 
 int main(int argc, char* argv[]) {
   char *dirname = NULL;
-  char *findme = NULL; // TODO: default
+  char *findme = NULL;
   char type = '\0';
 
   for (int i = 1; i < argc; i++) {  // Skip argv[0] (program name)
@@ -75,6 +79,11 @@ void error_prefix() {
   fputs("pfind: ", stderr);
 }
 
+void perror_prefix(char *path) {
+  char message[PATH_MAX + 7] = "pfind: ";
+  perror(strcat(message, path));
+}
+
 void missing_argument(char *argument) {
   error_prefix();
   fprintf(stderr, "missing argument to `%s'\n", argument);
@@ -90,50 +99,65 @@ void invalid_predicate(char *predicate) {
 void searchdir(char *dirname, char *findme, char type) {
   DIR *dir;  /* current working directory */
   struct dirent *direntp;  /* current working dir entry */
+  struct stat statp;  /* current stat of file/directory */
+
+  if (lstat(dirname, &statp) == -1) {
+    perror_prefix(dirname);
+    return;
+  }
+
+  if ((!findme || !fnmatch(findme, basename(dirname), 0)) && compare_type(statp.st_mode, type)) {
+    puts(dirname); // TODO: realpath
+  }
 
   // Base condition of the recursion
+  if (!S_ISDIR(statp.st_mode)) return;
+
   if ((dir = opendir(dirname)) == NULL) {
-    error_prefix();
-    perror(dirname);
+    perror_prefix(dirname);
     return;
   }
 
   char current_path[PATH_MAX];
-  while ((direntp = readdir(dir)) != NULL) {
+  /*while ((direntp = readdir(dir)) != NULL) {*/
+  while (true) {
+    errno = 0;
+    direntp = readdir(dir);
+
+    if (direntp == NULL) {
+      if (errno != 0)
+        perror_prefix(dirname);
+      break;
+    }
+
     if (strcmp(direntp->d_name, ".") != 0 && strcmp(direntp->d_name, "..") != 0) {
       sprintf(current_path, "%s/%s", dirname, direntp->d_name);
-      if ((!findme || !fnmatch(findme, direntp->d_name, 0)) && compare_type(direntp->d_type, type)) {
-        puts(current_path); // TODO: realpath
-      }
-
-      if (direntp->d_type == DT_DIR)
-        searchdir(current_path, findme, type);
+      searchdir(current_path, findme, type);
     }
   }
 
   closedir(dir);
 }
 
-bool compare_type(unsigned char d_type, char type) {
+bool compare_type(mode_t mode, char type) {
   switch (type) {
     case '\0':
       return true;
     case 'f':
-      return d_type == DT_REG;
+      return S_ISREG(mode);
     case 'd':
-      return d_type == DT_DIR;
-    case 'b':
-      return d_type == DT_BLK;
+      return S_ISDIR(mode);
     case 'c':
-      return d_type == DT_CHR;
+      return S_ISCHR(mode);
+    case 'b':
+      return S_ISBLK(mode);
     case 'p':
-      return d_type == DT_FIFO;
+      return S_ISFIFO(mode);
     case 'l':
-      return d_type == DT_LNK;
+      return S_ISLNK(mode);
     case 's':
-      return d_type == DT_SOCK;
+      return S_ISSOCK(mode);
     default:
       return false; // we should never get here
   }
 }
-
