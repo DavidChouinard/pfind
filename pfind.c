@@ -18,6 +18,7 @@
 #include  <dirent.h>
 #include  <stdbool.h>
 #include  <limits.h>
+#include  <fnmatch.h>
 
 /* prototypes */
 void print_usage(char *program);
@@ -90,6 +91,7 @@ void searchdir(char *dirname, char *findme, char type) {
   DIR *dir;  /* current working directory */
   struct dirent *direntp;  /* current working dir entry */
 
+  // Base condition of the recursion
   if ((dir = opendir(dirname)) == NULL) {
     error_prefix();
     perror(dirname);
@@ -98,10 +100,14 @@ void searchdir(char *dirname, char *findme, char type) {
 
   char current_path[PATH_MAX];
   while ((direntp = readdir(dir)) != NULL) {
-    /*puts(direntp->d_type);*/
-    if ((!findme || strcmp(direntp->d_name, findme) == 0) && compare_type(direntp->d_type, type)) {
+    if (strcmp(direntp->d_name, ".") != 0 && strcmp(direntp->d_name, "..") != 0) {
       sprintf(current_path, "%s/%s", dirname, direntp->d_name);
-      puts(current_path); // TODO: realpath
+      if ((!findme || !fnmatch(findme, direntp->d_name, 0)) && compare_type(direntp->d_type, type)) {
+        puts(current_path); // TODO: realpath
+      }
+
+      if (direntp->d_type == DT_DIR)
+        searchdir(current_path, findme, type);
     }
   }
 
