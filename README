@@ -1,0 +1,30 @@
+Part one
+==================
+
+  Name: chown (-R option)
+  Sample: chown -R root test/
+  Description: Changes the owner (or group ownership) of files
+
+  Name: chgrp (-R option)
+  Sample: chgrp root -R test/
+  Description: Changes the group ownership of files (note that chown also
+    supports this functionality)
+
+  Name: diff (-r option)
+  Sample: diff -r dir1/ dir2/
+  Description: Shows the line-by-line differences in files.
+
+Part two
+==================
+
+See attached code. Compile it by running:
+
+  make pfind
+
+For full usage instructions, run:
+
+  ./pfind
+
+Part three
+==================
+
