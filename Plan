@@ -1,0 +1,68 @@
+Project: pfind
+
+Purpose: find files by file type and filename pattern (replacement for GNU find)
+
+Outline:
+        pfind recursively traverses the passed directory and prints all files
+        that fullfil both the following conditions:
+
+            * File name matches the passed string shell pattern
+            * File type matches passed the passed type
+
+        Both conditions are optional. pfind does not follow symbolic links.
+
+        It outputs errors to stderr and the filename of each matched file to
+        sdtout. pfind will output the starting directory if it matches the
+        conditions. It is meant as a drop-in replacement for the GNU find
+        utility (but only provides a subset of functionality).
+
+Output:
+        For each matched file, pfind outputs the file path to stdout (one per
+        line). It looks like:
+
+            <path>
+
+        For each error, pfind outputs the following to stdout (one per line):
+
+            pfind: <path>: <error>
+
+        pfind will, for example, output an error if a particular file is
+        deleted between the time pfind lists the content of a directory and the
+        time it tries to stat the file.
+
+Arguments:
+        pfind takes the starting directory as argument and optional -name and
+        -type options. Its usage is as follows:
+
+            pfind starting_dir [-name filename-or-pattern] [-type {f|d|b|c|p|l|s}]
+
+        pfind prints an error and exits with non-zero status when malformed or
+        extraneous arguments are passed.
+
+        The name option can accept a shell pattern. The arguments to the -type
+        option follow the convention used by find. Specifically:
+
+            b      block (buffered) special
+            c      character (unbuffered) special
+            d      directory
+            p      named pipe (FIFO)
+            f      regular file
+            l      symbolic link
+            s      socket
+
+Input:
+        pfind does not accept any user input over STDIN.
+
+Data Structures:
+        pfind makes little use of data structures. Its functionality is
+        principally achieved by operating on the dirent and stat structs. It
+        uses a single malloc'ed string for each recursive iteration to limit
+        the stack space consumed. (the string contains the working directory
+        path and the memory can only be freed after the call's full inner
+        recursive tree has returned)
+
+Files:
+        pfind opens the starting directory for reading (see arguments section
+        above) and all its sub-directories and files. As currently implemented,
+        pfind's maximum directory detph is bounded by the OS limit of
+        simultaneously open file descriptors.

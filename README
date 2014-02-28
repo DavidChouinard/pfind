@@ -21,11 +21,16 @@ See attached code. Compile it by running:
 
   make pfind
 
-For full usage instructions, run:
+Its usage is as follows:
 
-  ./pfind
+  pfind starting_dir [-name filename-or-pattern] [-type {f|d|b|c|p|l|s}]
+
+(full usage instructions can be retrieved by running pfind with no argument)
 
 Part three
 ==================
 
-To deal with directories of arbitrary depth, 
+To deal with directories of arbitrary depth, we could call readdir repeatedly
+and append the result to linked list. Once we reach the end of the directory,
+we would immediately close the directory and iterating over the linked list to
+retrieve the nested files.

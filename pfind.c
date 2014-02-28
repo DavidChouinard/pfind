@@ -15,7 +15,6 @@
 #include  <stdio.h>
 #include  <string.h>
 #include  <dirent.h>
-#include  <sys/types.h>
 #include  <sys/stat.h>
 #include  <unistd.h>
 #include  <stdbool.h>
@@ -139,10 +138,10 @@ void searchdir(char *dirname, char *findme, char type) {
     }
 
     if ((!findme || !fnmatch(findme, basename(dirname), 0)) && compare_type(statp.st_mode, type)) {
-        puts(dirname); // TODO: realpath   // found one!
+        puts(dirname);  // found a matching path!
     }
 
-    // Base condition of the recursion
+    // Base condition of the recursion: we've reached a non-directory
     if (!S_ISDIR(statp.st_mode)) return;
 
     if ((dir = opendir(dirname)) == NULL) {
@@ -150,12 +149,13 @@ void searchdir(char *dirname, char *findme, char type) {
         return;
     }
 
-    while (true) {  // a bit clunky, but I don't see how it can be cleaner
+    // iterate over all sub-directories and break when we hit an error
+    while (true) {
         errno = 0;
         direntp = readdir(dir);
 
         if (direntp == NULL) {
-            if (errno != 0)
+            if (errno != 0)  // if errno == 0, we reach the end: just break
                 perror_prefix(dirname);
             break;
         }
